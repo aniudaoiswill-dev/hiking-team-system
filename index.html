@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>重装徒步组队系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <link href="style.css" rel="stylesheet">
+    <script>
+        // Tailwind配置 - 调整为Suunto品牌风格
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#005EB8', // Suunto蓝色
+                        secondary: '#00A0DF', // 浅蓝色
+                        accent: '#FF6B00', // 橙色点缀
+                        dark: '#0A1128', // 深蓝黑色
+                        light: '#F4F9FC' // 浅背景色
+                    },
+                    fontFamily: {
+                        sans: ['Helvetica Neue', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .shadow-soft {
+                box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
+            }
+            .transition-all-300 {
+                transition: all 0.3s ease;
+            }
+            .backdrop-blur {
+                backdrop-filter: blur(8px);
+            }
+            .suunto-border {
+                border: 1px solid rgba(0, 94, 184, 0.1);
+            }
+            .suunto-grid {
+                background-image: linear-gradient(rgba(0, 94, 184, 0.05) 1px, transparent 1px),
+                                  linear-gradient(90deg, rgba(0, 94, 184, 0.05) 1px, transparent 1px);
+                background-size: 20px 20px;
+            }
+            .suunto-compass {
+                position: relative;
+            }
+            .suunto-compass::after {
+                content: '';
+                position: absolute;
+                width: 20px;
+                height: 20px;
+                border: 2px solid rgba(0, 94, 184, 0.2);
+                border-radius: 50%;
+                top: -10px;
+                left: 50%;
+                transform: translateX(-50%);
+                z-index: -1;
+            }
+        }
+    </style>
+</head>
+<body class="bg-light text-dark min-h-screen flex flex-col">
+    <!-- 导航栏 -->
+    <header class="bg-white shadow-md fixed w-full top-0 z-50 transition-all duration-300">
+        <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <i class="fa fa-compass text-primary text-2xl suunto-compass"></i>
+                <h1 class="text-xl font-bold text-primary">重装徒步组队系统</h1>
+            </div>
+            <nav class="hidden md:flex items-center space-x-6">
+                <a href="#team" class="nav-link">人员分工</a>
+                <a href="#equipment" class="nav-link">物资准备</a>
+                <a href="#weather" class="nav-link">天气预报</a>
+                <a href="#route" class="nav-link">路书指引</a>
+                <a href="#about" class="nav-link">关于我们</a>
+            </nav>
+            <button class="md:hidden text-gray-700 focus:outline-none" id="menu-toggle">
+                <i class="fa fa-bars text-xl"></i>
+            </button>
+        </div>
+        <!-- 移动端菜单 -->
+        <div class="md:hidden hidden bg-white border-t" id="mobile-menu">
+            <div class="container mx-auto px-4 py-2">
+                <a href="#team" class="block py-2 mobile-nav-link">人员分工</a>
+                <a href="#equipment" class="block py-2 mobile-nav-link">物资准备</a>
+                <a href="#weather" class="block py-2 mobile-nav-link">天气预报</a>
+                <a href="#route" class="block py-2 mobile-nav-link">路书指引</a>
+                <a href="#about" class="block py-2 mobile-nav-link">关于我们</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- 英雄区域 -->
+    <section class="pt-24 pb-16 bg-gradient-to-br from-primary/5 to-secondary/5">
+        <div class="container mx-auto px-4 text-center relative overflow-hidden">
+            <div class="absolute inset-0 suunto-grid opacity-30"></div>
+            <h2 class="text-[clamp(2rem,5vw,3.5rem)] font-bold text-dark mb-6 leading-tight relative z-10">
+                打造完美的重装徒步体验
+            </h2>
+            <p class="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto mb-8 relative z-10">
+                从人员分工到物资准备，从天气预报到路书指引，一站式解决你的重装徒步组队需求
+            </p>
+            <div class="flex flex-col sm:flex-row justify-center gap-4">
+                <button id="start-button" class="bg-primary hover:bg-primary/90 text-white font-medium py-3 px-8 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105 flex items-center justify-center space-x-2">
+                    <i class="fa fa-rocket"></i>
+                    <span>开始创建徒步计划</span>
+                </button>
+                <button id="demo-button" class="bg-white hover:bg-gray-50 text-primary border border-primary font-medium py-3 px-8 rounded-lg shadow-md transition-all duration-300">
+                    查看演示
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- 主内容区域 -->
+    <main class="flex-grow container mx-auto px-4 py-12">
+        <!-- 人员分工部分 -->
+        <section id="team" class="mb-20">
+            <div class="section-header">
+                <h2 class="section-title">人员分工</h2>
+                <p class="section-description">合理分配团队角色，确保徒步安全高效</p>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-soft p-6 mb-8">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                    <h3 class="text-xl font-semibold mb-4 md:mb-0">团队成员管理</h3>
+                    <button id="add-member-btn" class="bg-secondary hover:bg-secondary/90 text-white font-medium py-2 px-6 rounded-lg shadow-md transition-all duration-300 flex items-center space-x-2">
+                        <i class="fa fa-plus"></i>
+                        <span>添加成员</span>
+                    </button>
+                </div>
+                
+                <div id="team-members-container" class="space-y-4">
+                    <!-- 示例成员 -->
+                    <div class="team-member-card bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-100">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
+                            <div class="flex items-center space-x-3 mb-4 md:mb-0">
+                                <div class="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center text-primary">
+                                    <i class="fa fa-user text-xl"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium">张三</h4>
+                                    <p class="text-sm text-gray-500">队长</p>
+                                </div>
+                            </div>
+                            <div class="flex space-x-3">
+                                <button class="edit-member-btn text-primary hover:text-primary/80">
+                                    <i class="fa fa-pencil"></i>
+                                </button>
+                                <button class="delete-member-btn text-red-500 hover:text-red-600">
+                                    <i class="fa fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="team-member-card bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-100">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
+                            <div class="flex items-center space-x-3 mb-4 md:mb-0">
+                                <div class="w-12 h-12 bg-secondary/10 rounded-full flex items-center justify-center text-secondary">
+                                    <i class="fa fa-user text-xl"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium">李四</h4>
+                                    <p class="text-sm text-gray-500">路线规划师</p>
+                                </div>
+                            </div>
+                            <div class="flex space-x-3">
+                                <button class="edit-member-btn text-primary hover:text-primary/80">
+                                    <i class="fa fa-pencil"></i>
+                                </button>
+                                <button class="delete-member-btn text-red-500 hover:text-red-600">
+                                    <i class="fa fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-soft p-6">
+                <h3 class="text-xl font-semibold mb-6">角色与职责分配</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- 角色卡片 -->
+                    <div class="role-card bg-gray-50 p-4 rounded-lg border border-gray-100 hover:border-primary/30 transition-all duration-300 cursor-pointer">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <div class="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary">
+                                <i class="fa fa-star"></i>
+                            </div>
+                            <h4 class="font-medium">队长</h4>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-3">负责团队整体协调、决策和安全管理</p>
+                        <div class="text-xs text-gray-500">已分配: 张三</div>
+                    </div>
+                    
+                    <div class="role-card bg-gray-50 p-4 rounded-lg border border-gray-100 hover:border-primary/30 transition-all duration-300 cursor-pointer">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <div class="w-10 h-10 bg-secondary/10 rounded-full flex items-center justify-center text-secondary">
+                                <i class="fa fa-map"></i>
+                            </div>
+                            <h4 class="font-medium">路线规划师</h4>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-3">负责路线设计、导航和地形分析</p>
+                        <div class="text-xs text-gray-500">已分配: 李四</div>
+                    </div>
+                    
+                    <div class="role-card bg-gray-50 p-4 rounded-lg border border-gray-100 hover:border-primary/30 transition-all duration-300 cursor-pointer">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <div class="w-10 h-10 bg-accent/10 rounded-full flex items-center justify-center text-accent">
+                                <i class="fa fa-medkit"></i>
+                            </div>
+                            <h4 class="font-medium">医疗员</h4>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-3">负责团队医疗保障和紧急处理</p>
+                        <div class="text-xs text-gray-500">未分配</div>
+                    </div>
+                    
+                    <div class="role-card bg-gray-50 p-4 rounded-lg border border-gray-100 hover:border-primary/30 transition-all duration-300 cursor-pointer">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <div class="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary">
+                                <i class="fa fa-cutlery"></i>
+                            </div>
+                            <h4 class="font-medium">厨师</h4>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-3">负责团队饮食规划和烹饪</p>
+                        <div class="text-xs text-gray-500">未分配</div>
+                    </div>
+                    
+                    <div class="role-card bg-gray-50 p-4 rounded-lg border border-gray-100 hover:border-primary/30 transition-all duration-300 cursor-pointer">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <div class="w-10 h-10 bg-secondary/10 rounded-full flex items-center justify-center text-secondary">
+                                <i class="fa fa-camera"></i>
+                            </div>
+                            <h4 class="font-medium">摄影师</h4>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-3">负责记录团队行程和美景</p>
+                        <div class="text-xs text-gray-500">未分配</div>
+                    </div>
+                    
+                    <div class="role-card bg-gray-50 p-4 rounded-lg border border-gray-100 hover:border-primary/30 transition-all duration-300 cursor-pointer">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <div class="w-10 h-10 bg-accent/10 rounded-full flex items-center justify-center text-accent">
+                                <i class="fa fa-lightbulb-o"></i>
+                            </div>
+                            <h4 class="font-medium">装备管理员</h4>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-3">负责装备检查和物资管理</p>
+                        <div class="text-xs text-gray-500">未分配</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 物资准备部分 -->
+        <section id="equipment" class="mb-20">
+            <div class="section-header">
+                <h2 class="section-title">物资准备与分配</h2>
+                <p class="section-description">科学规划物资，合理分配负重</p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <div class="lg:col-span-2 bg-white rounded-xl shadow-soft p-6">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                        <h3 class="text-xl font-semibold mb-4 md:mb-0">物资清单管理</h3>
+                        <button id="add-item-btn" class="bg-secondary hover:bg-secondary/90 text-white font-medium py-2 px-6 rounded-lg shadow-md transition-all duration-300 flex items-center space-x-2">
+                            <i class="fa fa-plus"></i>
+                            <span>添加物资</span>
+                        </button>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full">
+                            <thead>
+                                <tr class="bg-gray-50 text-left">
+                                    <th class="py-3 px-4 font-medium text-gray-600">物资名称</th>
+                                    <th class="py-3 px-4 font-medium text-gray-600">类型</th>
+                                    <th class="py-3 px-4 font-medium text-gray-600">数量</th>
+                                    <th class="py-3 px-4 font-medium text-gray-600">重量 (kg)</th>
+                                    <th class="py-3 px-4 font-medium text-gray-600">负责人</th>
+                                    <th class="py-3 px-4 font-medium text-gray-600">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="equipment-table-body">
+                                <tr class="border-t">
+                                    <td class="py-3 px-4">帐篷</td>
+                                    <td class="py-3 px-4">露营装备</td>
+                                    <td class="py-3 px-4">1</td>
+                                    <td class="py-3 px-4">3.5</td>
+                                    <td class="py-3 px-4">张三</td>
+                                    <td class="py-3 px-4">
+                                        <div class="flex space-x-2">
+                                            <button class="edit-item-btn text-primary hover:text-primary/80">
+                                                <i class="fa fa-pencil"></i>
+                                            </button>
+                                            <button class="delete-item-btn text-red-500 hover:text-red-600">
+                                                <i class="fa fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="border-t">
+                                    <td class="py-3 px-4">睡袋</td>
+                                    <td class="py-3 px-4">露营装备</td>
+                                    <td class="py-3 px-4">2</td>
+                                    <td class="py-3 px-4">2.0</td>
+                                    <td class="py-3 px-4">李四</td>
+                                    <td class="py-3 px-4">
+                                        <div class="flex space-x-2">
+                                            <button class="edit-item-btn text-primary hover:text-primary/80">
+                                                <i class="fa fa-pencil"></i>
+                                            </button>
+                                            <button class="delete-item-btn text-red-500 hover:text-red-600">
+                                                <i class="fa fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="border-t">
+                                    <td class="py-3 px-4">登山杖</td>
+                                    <td class="py-3 px-4">徒步装备</td>
+                                    <td class="py-3 px-4">2</td>
+                                    <td class="py-3 px-4">0.8</td>
+                                    <td class="py-3 px-4">张三、李四</td>
+                                    <td class="py-3 px-4">
+                                        <div class="flex space-x-2">
+                                            <button class="edit-item-btn text-primary hover:text-primary/80">
+                                                <i class="fa fa-pencil"></i>
+                                            </button>
+                                            <button class="delete-item-btn text-red-500 hover:text-red-600">
+                                                <i class="fa fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-xl shadow-soft p-6">
+                    <h3 class="text-xl font-semibold mb-6">物资统计</h3>
+                    
+                    <div class="space-y-6">
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-600 mb-2">总重量分布</h4>
+                            <div class="h-64">
+                                <canvas id="weightChart"></canvas>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <div class="text-sm text-gray-500 mb-1">总物资数</div>
+                                <div class="text-2xl font-bold text-primary">3</div>
+                            </div>
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <div class="text-sm text-gray-500 mb-1">总重量</div>
+                                <div class="text-2xl font-bold text-secondary">6.3 kg</div>
+                            </div>
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <div class="text-sm text-gray-500 mb-1">人均负重</div>
+                                <div class="text-2xl font-bold text-accent">3.15 kg</div>
+                            </div>
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <div class="text-sm text-gray-500 mb-1">未分配物资</div>
+                                <div class="text-2xl font-bold text-dark">0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-soft p-6">
+                <h3 class="text-xl font-semibold mb-6">物资模板库</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- 物资模板 -->
+                    <div class="equipment-template bg-gray-50 p-4 rounded-lg border border-gray-100 hover:border-primary/30 transition-all duration-300 cursor-pointer">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <div class="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary">
+                                <i class="fa fa-campground"></i>
+                            </div>
+                            <h4 class="font-medium">基础露营套装</h4>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-3">包含帐篷、睡袋、防潮垫、营地灯等基础露营装备</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-gray-500">预计重量: 8-10 kg</span>
+                            <button class="apply-template-btn text-primary hover:text-primary/80">
+                                <i class="fa fa-check"></i> 应用
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="equipment-template bg-gray-50 p-4 rounded-lg border border-gray-100 hover:border-primary/30 transition-all duration-300 cursor-pointer">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <div class="w-10 h-10 bg-secondary/10 rounded-full flex items-center justify-center text-secondary">
+                                <i class="fa fa-cutlery"></i>
+                            </div>
+                            <h4 class="font-medium">户外饮食套装</h4>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-3">包含炉头、气罐、锅具、餐具、食品等饮食相关物资</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-gray-500">预计重量: 4-6 kg</span>
+                            <button class="apply-template-btn text-primary hover:text-primary/80">
+                                <i class="fa fa-check"></i> 应用
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="equipment-template bg-gray-50 p-4 rounded-lg border border-gray-100 hover:border-primary/30 transition-all duration-300 cursor-pointer">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <div class="w-10 h-10 bg-accent/10 rounded-full flex items-center justify-center text-accent">
+                                <i class="fa fa-medkit"></i>
+                            </div>
+                            <h4 class="font-medium">户外医疗包</h4>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-3">包含常用药品、急救用品、外伤处理工具等医疗物资</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-gray-500">预计重量: 1-2 kg</span>
+                            <button class="apply-template-btn text-primary hover:text-primary/80">
+                                <i class="fa fa-check"></i> 应用
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 天气预报部分 -->
+        <section id="weather" class="mb-20">
+            <div class="section-header">
+                <h2 class="section-title">天气预报</h2>
+                <p class="section-description">掌握徒步区域天气变化，提前做好准备</p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                <div class="lg:col-span-2 bg-white rounded-xl shadow-soft p-6">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                        <h3 class="text-xl font-semibold mb-4 md:mb-0">天气查询</h3>
+                        <div class="flex space-x-2">
+                            <input type="text" id="location-input" placeholder="输入徒步地点" class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+                            <button id="search-weather-btn" class="bg-primary hover:bg-primary/90 text-white font-medium py-2 px-6 rounded-lg shadow-md transition-all duration-300">
+                                查询
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="current-weather" class="bg-gray-50 p-6 rounded-lg">
+                        <div class="flex flex-col md:flex-row justify-between items-center">
+                            <div>
+                                <h4 class="text-sm text-gray-500 mb-1">北京市</h4>
+                                <p class="text-4xl font-bold text-dark mb-2">25°C</p>
+                                <p class="text-gray-600">晴朗</p>
+                            </div>
+                            <div class="text-6xl text-yellow-500 my-4 md:my-0">
+                                <i class="fa fa-sun-o"></i>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-4 mt-6 pt-6 border-t">
+                            <div class="text-center">
+                                <div class="text-sm text-gray-500 mb-1">湿度</div>
+                                <p class="font-medium">45%</p>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-sm text-gray-500 mb-1">风速</div>
+                                <p class="font-medium">3级</p>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-sm text-gray-500 mb-1">气压</div>
+                                <p class="font-medium">1013 hPa</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="lg:col-span-3 bg-white rounded-xl shadow-soft p-6">
+                    <h3 class="text-xl font-semibold mb-6">7天天气预报</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-7 gap-4">
+                        <!-- 每日天气 -->
+                        <div class="weather-day bg-gray-50 p-4 rounded-lg text-center">
+                            <div class="text-sm font-medium mb-2">今天</div>
+                            <div class="text-3xl text-yellow-500 mb-2">
+                                <i class="fa fa-sun-o"></i>
+                            </div>
+                            <div class="mb-2">晴朗</div>
+                            <div class="font-medium">25°C</div>
+                        </div>
+                        
+                        <div class="weather-day bg-gray-50 p-4 rounded-lg text-center">
+                            <div class="text-sm font-medium mb-2">明天</div>
+                            <div class="text-3xl text-blue-400 mb-2">
+                                <i class="fa fa-cloud"></i>
+                            </div>
+                            <div class="mb-2">多云</div>
+                            <div class="font-medium">23°C</div>
+                        </div>
+                        
+                        <div class="weather-day bg-gray-50 p-4 rounded-lg text-center">
+                            <div class="text-sm font-medium mb-2">后天</div>
+                            <div class="text-3xl text-blue-500 mb-2">
+                                <i class="fa fa-tint"></i>
+                            </div>
+                            <div class="mb-2">小雨</div>
+                            <div class="font-medium">20°C</div>
+                        </div>
+                        
+                        <div class="weather-day bg-gray-50 p-4 rounded-lg text-center">
+                            <div class="text-sm font-medium mb-2">第4天</div>
+                            <div class="text-3xl text-blue-500 mb-2">
+                                <i class="fa fa-tint"></i>
+                            </div>
+                            <div class="mb-2">中雨</div>
+                            <div class="font-medium">18°C</div>
+                        </div>
+                        
+                        <div class="weather-day bg-gray-50 p-4 rounded-lg text-center">
+                            <div class="text-sm font-medium mb-2">第5天</div>
+                            <div class="text-3xl text-blue-400 mb-2">
+                                <i class="fa fa-cloud"></i>
+                            </div>
+                            <div class="mb-2">多云</div>
+                            <div class="font-medium">19°C</div>
+                        </div>
+                        
+                        <div class="weather-day bg-gray-50 p-4 rounded-lg text-center">
+                            <div class="text-sm font-medium mb-2">第6天</div>
+                            <div class="text-3xl text-yellow-500 mb-2">
+                                <i class="fa fa-sun-o"></i>
+                            </div>
+                            <div class="mb-2">晴朗</div>
+                            <div class="font-medium">22°C</div>
+                        </div>
+                        
+                        <div class="weather-day bg-gray-50 p-4 rounded-lg text-center">
+                            <div class="text-sm font-medium mb-2">第7天</div>
+                            <div class="text-3xl text-yellow-500 mb-2">
+                                <i class="fa fa-sun-o"></i>
+                            </div>
+                            <div class="mb-2">晴朗</div>
+                            <div class="font-medium">24°C</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-8">
+                        <h4 class="text-lg font-medium mb-4">温度趋势</h4>
+                        <div class="h-64">
+                            <canvas id="temperatureChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 路书指引部分 -->
+        <section id="route" class="mb-20">
+            <div class="section-header">
+                <h2 class="section-title">路书指引</h2>
+                <p class="section-description">详细的徒步路线规划与导航</p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <div class="lg:col-span-2 bg-white rounded-xl shadow-soft p-6">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                        <h3 class="text-xl font-semibold mb-4 md:mb-0">路线地图</h3>
+                        <div class="flex space-x-2">
+                            <button id="view-full-map-btn" class="bg-primary hover:bg-primary/90 text-white font-medium py-2 px-6 rounded-lg shadow-md transition-all duration-300">
+                                查看完整地图
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="relative h-[400px] bg-gray-100 rounded-lg overflow-hidden">
+                        <!-- 地图占位 -->
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <div class="text-center">
+                                <i class="fa fa-map-o text-6xl text-gray-300 mb-4"></i>
+                                <p class="text-gray-500">地图加载中...</p>
+                            </div>
+                        </div>
+                        <!-- 路线标记点 -->
+                        <div class="absolute top-[30%] left-[20%] w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white cursor-pointer">
+                            <i class="fa fa-flag"></i>
+                        </div>
+                        <div class="absolute top-[40%] left-[40%] w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center text-white cursor-pointer">
+                            <i class="fa fa-map-marker"></i>
+                        </div>
+                        <div class="absolute top-[50%] left-[60%] w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white cursor-pointer">
+                            <i class="fa fa-flag"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-xl shadow-soft p-6">
+                    <h3 class="text-xl font-semibold mb-6">路线概览</h3>
+                    
+                    <div class="space-y-6">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-medium mb-3">徒步路线详情</h4>
+                            <div class="space-y-2">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">路线名称:</span>
+                                    <span>北京香山徒步环线</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">总长度:</span>
+                                    <span>12.5公里</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">预计耗时:</span>
+                                    <span>5-6小时</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">累计爬升:</span>
+                                    <span>850米</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">难度等级:</span>
+                                    <span class="text-yellow-600">中等</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <button id="export-route-btn" class="w-full bg-secondary hover:bg-secondary/90 text-white font-medium py-3 px-6 rounded-lg shadow-md transition-all duration-300 flex items-center justify-center space-x-2">
+                                <i class="fa fa-download"></i>
+                                <span>导出路书</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-soft p-6">
+                <h3 class="text-xl font-semibold mb-6">详细路书</h3>
+                
+                <div class="space-y-6">
+                    <!-- 路书章节 -->
+                    <div class="route-section bg-gray-50 p-4 rounded-lg border-l-4 border-primary">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <div class="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-primary">
+                                <i class="fa fa-flag"></i>
+                            </div>
+                            <h4 class="font-medium">起点: 香山公园东门</h4>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-3">从香山公园东门出发，沿着指示牌前往登山道入口。建议提前到达，做好热身准备。</p>
+                        <div class="flex justify-between text-xs text-gray-500">
+                            <span>海拔: 100米</span>
+                            <span>预计到达时间: 08:30</span>
+                        </div>
+                    </div>
+                    
+                    <div class="route-section bg-gray-50 p-4 rounded-lg">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <div class="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-primary">
+                                <i class="fa fa-mountain"></i>
+                            </div>
+                            <h4 class="font-medium">第一段: 东门至香炉峰</h4>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-3">沿着登山步道向上，途经玉华岫、森玉笏等景点，这段路程较为陡峭，需要注意安全。</p>
+                        <div class="flex flex-wrap gap-2 mb-3">
+                            <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">石阶路</span>
+                            <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">陡峭</span>
+                            <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">风景优美</span>
+                        </div>
+                        <div class="flex justify-between text-xs text-gray-500">
+                            <span>距离: 2.5公里</span>
+                            <span>预计耗时: 1.5小时</span>
+                            <span>累计爬升: 550米</span>
+                        </div>
+                    </div>
+                    
+                    <div class="route-section bg-gray-50 p-4 rounded-lg">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <div class="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-primary">
+                                <i class="fa fa-cutlery"></i>
+                            </div>
+                            <h4 class="font-medium">休息点: 香炉峰观景台</h4>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-3">到达香炉峰山顶，这里是香山的最高点，可以俯瞰整个北京城区。建议在此处休息，补充能量。</p>
+                        <div class="flex flex-wrap gap-2 mb-3">
+                            <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">观景台</span>
+                            <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">休息区</span>
+                            <span class="px-2 py-1 bg-red-100 text-red-800 text-xs rounded">人多</span>
+                        </div>
+                        <div class="flex justify-between text-xs text-gray-500">
+                            <span>海拔: 575米</span>
+                            <span>建议停留时间: 30分钟</span>
+                        </div>
+                    </div>
+                    
+                    <div class="route-section bg-gray-50 p-4 rounded-lg">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <div class="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-primary">
+                                <i class="fa fa-mountain"></i>
+                            </div>
+                            <h4 class="font-medium">第二段: 香炉峰至鬼见愁</h4>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-3">从香炉峰出发，沿着山脊线前往鬼见愁，这段路程较为平缓，但部分路段有碎石，需要注意脚下。</p>
+                        <div class="flex flex-wrap gap-2 mb-3">
+                            <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">碎石路</span>
+                            <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">平缓</span>
+                            <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">视野开阔</span>
+                        </div>
+                        <div class="flex justify-between text-xs text-gray-500">
+                            <span>距离: 4公里</span>
+                            <span>预计耗时: 1.5小时</span>
+                            <span>累计爬升: 200米</span>
+                        </div>
+                    </div>
+                    
+                    <div class="route-section bg-gray-50 p-4 rounded-lg border-l-4 border-red-500">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center text-red-500">
+                                <i class="fa fa-flag"></i>
+                            </div>
+                            <h4 class="font-medium">终点: 香山公园北门</h4>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-3">从鬼见愁下山，最终到达香山公园北门。这段下坡路较长，需要控制速度，避免膝盖受伤。</p>
+                        <div class="flex justify-between text-xs text-gray-500">
+                            <span>海拔: 120米</span>
+                            <span>预计到达时间: 14:00</span>
+                            <span>总耗时: 5.5小时</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 关于我们 -->
+        <section id="about" class="mb-10">
+            <div class="section-header">
+                <h2 class="section-title">关于我们</h2>
+                <p class="section-description">打造专业的重装徒步组队平台</p>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-soft p-8">
+                <div class="flex flex-col md:flex-row items-center md:items-start gap-8">
+                    <div class="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center text-primary text-4xl">
+                        <i class="fa fa-compass"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="text-2xl font-bold text-dark mb-4">重装徒步组队系统</h3>
+                        <p class="text-gray-600 mb-6">我们致力于为重装徒步爱好者提供专业、便捷的组队与规划工具，帮助你更好地组织和管理徒步活动，确保每次徒步安全、高效、愉快。</p>
+                        <div class="flex flex-wrap gap-6">
+                            <div>
+                                <h4 class="text-lg font-semibold mb-2">联系我们</h4>
+                                <p class="text-gray-600">Email: contact@huwaiditu.com</p>
+                            </div>
+                            <div>
+                                <h4 class="text-lg font-semibold mb-2">关注我们</h4>
+                                <div class="flex space-x-4">
+                                    <a href="#" class="text-gray-500 hover:text-primary"><i class="fa fa-weixin text-xl"></i></a>
+                                    <a href="#" class="text-gray-500 hover:text-primary"><i class="fa fa-weibo text-xl"></i></a>
+                                    <a href="#" class="text-gray-500 hover:text-primary"><i class="fa fa-instagram text-xl"></i></a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-dark text-white py-10">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-6 md:mb-0">
+                    <div class="flex items-center space-x-2 mb-4">
+                        <i class="fa fa-compass text-primary text-2xl"></i>
+                        <h2 class="text-xl font-bold">重装徒步组队系统</h2>
+                    </div>
+                    <p class="text-gray-400 text-sm">专业的重装徒步规划与组队平台</p>
+                </div>
+                <div class="flex flex-wrap justify-center gap-8">
+                    <div>
+                        <h3 class="font-semibold mb-3 text-gray-300">功能</h3>
+                        <ul class="space-y-2 text-sm text-gray-400">
+                            <li><a href="#team" class="hover:text-white">人员分工</a></li>
+                            <li><a href="#equipment" class="hover:text-white">物资准备</a></li>
+                            <li><a href="#weather" class="hover:text-white">天气预报</a></li>
+                            <li><a href="#route" class="hover:text-white">路书指引</a></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold mb-3 text-gray-300">支持</h3>
+                        <ul class="space-y-2 text-sm text-gray-400">
+                            <li><a href="#" class="hover:text-white">帮助中心</a></li>
+                            <li><a href="#" class="hover:text-white">安全指南</a></li>
+                            <li><a href="#" class="hover:text-white">常见问题</a></li>
+                            <li><a href="#about" class="hover:text-white">联系我们</a></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold mb-3 text-gray-300">法律</h3>
+                        <ul class="space-y-2 text-sm text-gray-400">
+                            <li><a href="#" class="hover:text-white">隐私政策</a></li>
+                            <li><a href="#" class="hover:text-white">服务条款</a></li>
+                            <li><a href="#" class="hover:text-white">版权声明</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-500 text-sm">
+                <p>&copy; 2023 重装徒步组队系统 版权所有</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 模态框 -->
+    <div id="modal" class="fixed inset-0 bg-black/50 backdrop-blur flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl shadow-lg p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="modal-title" class="text-xl font-semibold">添加成员</h3>
+                <button id="close-modal-btn" class="text-gray-500 hover:text-gray-700">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            <div id="modal-content">
+                <!-- 模态框内容将通过JavaScript动态填充 -->
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
